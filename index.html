@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Base-10 Addition/Subtraction</title>
+<title>Base-10 Addition / Subtraction</title>
 
 <style>
 body {
   font-family: Arial, sans-serif;
-  margin:0;
   background:#f9f9f9;
+  margin:0;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -22,18 +21,17 @@ h2 { margin:20px; }
   gap:10px;
   flex-wrap:wrap;
   justify-content:center;
-  margin-bottom:20px;
 }
 
-input, button, select {
+input, button {
   font-size:16px;
   padding:5px 10px;
 }
 
 #availableBlocks {
+  margin:20px;
   display:flex;
-  gap:12px;
-  margin-bottom:20px;
+  gap:10px;
 }
 
 .block {
@@ -47,25 +45,24 @@ input, button, select {
 }
 
 .flat { width:200px; height:200px; background:#f06; }
-.rod  { width:20px;  height:200px; background:#0a0; }
-.unit { width:20px;  height:20px;  background:#06f; }
+.rod  { width:20px; height:200px; background:#0a0; }
+.unit { width:20px; height:20px; background:#06f; }
 
 #board {
-  display:flex;
   width:90vw;
+  display:flex;
+  gap:20px;
   border:2px solid #333;
   background:white;
   padding:20px;
-  gap:20px;
 }
 
 .column {
   flex:1;
-  position:relative;
   border-left:1px solid #333;
+  position:relative;
   padding-top:30px;
 }
-
 .column:first-child { border-left:none; }
 
 .column-label {
@@ -84,7 +81,7 @@ input, button, select {
 }
 
 #equation {
-  margin:40px 0;
+  margin:40px;
   font-size:36px;
 }
 </style>
@@ -123,7 +120,7 @@ const cols = {
 
 let currentRow = 1;
 
-// Ensure row exists
+/* ---------- ROW HELPERS ---------- */
 function getRow(col) {
   let row = col.querySelector(".row" + currentRow);
   if (!row) {
@@ -134,60 +131,77 @@ function getRow(col) {
   return row;
 }
 
-// Add block
-function addBlock(type) {
+/* ---------- AUTO REGROUP CHECK ---------- */
+function checkRegroup(rowNum) {
+  const ones = document.querySelectorAll(`.row${rowNum} .unit`);
+  const tens = document.querySelectorAll(`.row${rowNum} .rod`);
+
+  while (ones.length >= 10) {
+    for (let i = 0; i < 10; i++) ones[i].remove();
+    addBlock("rod", rowNum);
+  }
+
+  while (tens.length >= 10) {
+    for (let i = 0; i < 10; i++) tens[i].remove();
+    addBlock("flat", rowNum);
+  }
+}
+
+/* ---------- ADD BLOCK ---------- */
+function addBlock(type, rowNum = currentRow) {
   const block = document.createElement("div");
   block.className = "block " + type;
-  block.dataset.type = type;
-
-  block.addEventListener("dblclick", () => regroup(type));
   block.draggable = true;
 
+  block.addEventListener("dragstart", e => {
+    e.dataTransfer.setData("text", type);
+  });
+
   getRow(cols[type]).appendChild(block);
+  checkRegroup(rowNum);
 }
 
-// 🔑 CORE FIX — COUNT ALL BLOCKS IN ROW
-function regroup(type) {
-  const rowBlocks = document.querySelectorAll(`.row${currentRow} .${type}`);
+/* ---------- DRAG BREAKDOWN ---------- */
+Object.entries(cols).forEach(([type, col]) => {
+  col.addEventListener("dragover", e => e.preventDefault());
 
-  if (type === "unit" && rowBlocks.length >= 10) {
-    for (let i = 0; i < 10; i++) rowBlocks[i].remove();
-    addBlock("rod");
-  }
+  col.addEventListener("drop", e => {
+    e.preventDefault();
+    const fromType = e.dataTransfer.getData("text");
+    if (fromType === type) return;
 
-  if (type === "rod" && rowBlocks.length >= 10) {
-    for (let i = 0; i < 10; i++) rowBlocks[i].remove();
-    addBlock("flat");
-  }
+    const sourceRow = document.querySelector(`.row${currentRow} .${fromType}`);
+    if (!sourceRow) return;
+    sourceRow.remove();
 
-  if (type === "rod" && rowBlocks.length === 1) {
-    rowBlocks[0].remove();
-    for (let i = 0; i < 10; i++) addBlock("unit");
-  }
-
-  if (type === "flat" && rowBlocks.length === 1) {
-    rowBlocks[0].remove();
-    for (let i = 0; i < 10; i++) addBlock("rod");
-  }
-}
-
-// Block palette
-document.querySelectorAll("#availableBlocks .block").forEach(b => {
-  b.addEventListener("click", () => {
-    addBlock(b.classList.contains("flat") ? "flat" :
-             b.classList.contains("rod") ? "rod" : "unit");
+    if (fromType === "rod" && type === "unit") {
+      for (let i = 0; i < 10; i++) addBlock("unit");
+    }
+    if (fromType === "flat" && type === "rod") {
+      for (let i = 0; i < 10; i++) addBlock("rod");
+    }
   });
 });
 
-// Setup
+/* ---------- PALETTE ---------- */
+document.querySelectorAll("#availableBlocks .block").forEach(b => {
+  b.onclick = () =>
+    addBlock(
+      b.classList.contains("flat") ? "flat" :
+      b.classList.contains("rod") ? "rod" : "unit"
+    );
+});
+
+/* ---------- CONTROLS ---------- */
 document.getElementById("setup").onclick = () => {
-  Object.values(cols).forEach(c => c.innerHTML = `<div class="column-label">${c.querySelector(".column-label").innerText}</div>`);
+  Object.values(cols).forEach(c =>
+    c.innerHTML = `<div class="column-label">${c.querySelector(".column-label").innerText}</div>`
+  );
   currentRow = 1;
   document.getElementById("equation").innerText =
     document.getElementById("problemInput").value.replace(/\d+/g, "___");
 };
 
-// Switch number (STACKING FIXED)
 document.getElementById("switchRow").onclick = () => {
   currentRow = currentRow === 1 ? 2 : 1;
 };
