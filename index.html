@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Base-10 Addition/Subtraction with Regrouping</title>
+<title>Base-10 Addition/Subtraction with Stacking & Regrouping</title>
 <style>
 body {
   font-family: Arial, sans-serif;
@@ -67,7 +67,7 @@ input, button, select {
 .column {
   flex:1;
   display:flex;
-  flex-direction:row;
+  flex-direction:column;
   align-items:flex-start;
   border-left:1px solid #333;
   min-height: 250px;
@@ -101,7 +101,7 @@ input, button, select {
 </head>
 <body>
 
-<h2>Base-10 Addition/Subtraction with Regrouping</h2>
+<h2>Base-10 Addition/Subtraction with Stacking & Regrouping</h2>
 
 <div id="controls">
   <label>Problem: <input type="text" id="problemInput" value="246 + 175"></label>
@@ -142,7 +142,7 @@ const cols = {
   unit: document.getElementById('onesCol')
 };
 
-let currentRow = 1;
+let currentRow = 1; // 1 = first number, 2 = second number
 
 // --- Clear board ---
 function clearBoard() {
@@ -172,6 +172,25 @@ function addBlockToColumn(type){
     if(block.innerText==='') block.innerText = block.dataset.value;
   });
 
+  // Automatic regrouping on click
+  block.addEventListener('dblclick', ()=>{
+    const rowContainer = getRowContainer(cols[type]);
+    const blocks = Array.from(rowContainer.querySelectorAll(`.${type}`));
+    if(type==='unit' && blocks.length>=10){
+      for(let i=0;i<10;i++) blocks[i].remove();
+      addBlockToColumn('rod');
+    } else if(type==='rod' && blocks.length>=10){
+      for(let i=0;i<10;i++) blocks[i].remove();
+      addBlockToColumn('flat');
+    } else if(type==='rod' && blocks.length===1){
+      blocks[0].remove();
+      for(let i=0;i<10;i++) addBlockToColumn('unit');
+    } else if(type==='flat' && blocks.length===1){
+      blocks[0].remove();
+      for(let i=0;i<10;i++) addBlockToColumn('rod');
+    }
+  });
+
   // Drag & drop
   block.draggable = true;
   block.addEventListener('dragstart', e=>{
@@ -191,35 +210,29 @@ Object.values(cols).forEach(col => {
     const oldType = data.type;
     const row = data.row;
     const targetType = col.id==='hundredsCol'?'flat':col.id==='tensCol'?'rod':'unit';
-
     if(oldType === targetType) return;
 
-    // Get all blocks in the row
     const rowContainer = cols[oldType].querySelector(`.row${row}`);
     const blocks = Array.from(rowContainer.querySelectorAll(`.${oldType}`));
 
     // --- Regrouping logic ---
     if(oldType==='unit' && targetType==='rod'){
-      // 10 ones → 1 ten
-      if(blocks.length >= 10){
+      if(blocks.length >=10){
         for(let i=0;i<10;i++) blocks[i].remove();
         addBlockToColumn('rod');
       }
     } else if(oldType==='rod' && targetType==='unit'){
-      // 1 ten → 10 ones
-      if(blocks.length >= 1){
+      if(blocks.length>=1){
         blocks[0].remove();
         for(let i=0;i<10;i++) addBlockToColumn('unit');
       }
     } else if(oldType==='rod' && targetType==='flat'){
-      // 10 tens → 1 hundred
-      if(blocks.length >= 10){
+      if(blocks.length>=10){
         for(let i=0;i<10;i++) blocks[i].remove();
         addBlockToColumn('flat');
       }
     } else if(oldType==='flat' && targetType==='rod'){
-      // 1 hundred → 10 tens
-      if(blocks.length >=1){
+      if(blocks.length>=1){
         blocks[0].remove();
         for(let i=0;i<10;i++) addBlockToColumn('rod');
       }
@@ -250,4 +263,4 @@ switchRowBtn.addEventListener('click', ()=>{
 
 </body>
 </html>
- 
+
